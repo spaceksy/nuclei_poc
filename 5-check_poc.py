@@ -3,8 +3,17 @@ import shutil
 import subprocess
 import time
 import hashlib
+from datetime import datetime
 
 POC_DIR, TMP_DIR, TIMEOUT, START_TIME = "poc", "tmp", 19800, time.time()
+
+# 预定义分类关键字及对应目录名（根据需求自由修改）
+CATEGORY_KEYWORDS = {
+    "FileUpload": "FileUpload",
+    "RCE": "RCE",
+    "SQLI": "SQLI",
+    # 可以继续添加更多分类
+}
 
 def ensure_dir(directory):
     os.makedirs(directory, exist_ok=True)
@@ -14,9 +23,35 @@ def safe_remove(file_path):
         os.remove(file_path)
         print(f"poc校验失败，已删除文件: {file_path}")
 
-def move_file(src, dest):
-    os.makedirs(os.path.dirname(dest), exist_ok=True)
+def classify_file(file_path):
+    """根据文件内容或文件名关键词判断分类"""
+    # 这里用最简单的方式：判断文件名是否包含关键字，不包含的话归为 Other
+    filename = os.path.basename(file_path).lower()
+    for keyword, category in CATEGORY_KEYWORDS.items():
+        if keyword.lower() in filename:
+            return category
+    # 如果你想根据文件内容判断，也可以打开文件扫描关键词
+    # with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+    #     content = f.read()
+    #     for keyword, category in CATEGORY_KEYWORDS.items():
+    #         if keyword.lower() in content.lower():
+    #             return category
+    return "Other"
+
+def move_file(src, base_poc_dir):
+    # 生成当天日期目录名，比如 Vuln_Date/2025-8-11/
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    date_dir = os.path.join(base_poc_dir, "Vuln_Date", today_str)
+    
+    category = classify_file(src)
+    dest_dir = os.path.join(date_dir, category)
+    
+    ensure_dir(dest_dir)
+    
+    dest = os.path.join(dest_dir, os.path.basename(src))
+    
     try:
+        # 避免同名覆盖，增加编号
         if os.path.exists(dest):
             base, ext = os.path.splitext(dest)
             counter = 1
@@ -25,6 +60,7 @@ def move_file(src, dest):
                 counter += 1
                 new_dest = f"{base}_{counter}{ext}"
             dest = new_dest
+        
         shutil.move(src, dest)
         print(f"poc校验成功，已移动文件: {src} -> {dest}")
     except Exception as e:
@@ -50,12 +86,11 @@ if not os.path.exists(TMP_DIR):
 
 yaml_files = [os.path.join(root, file) for root, _, files in os.walk(TMP_DIR)
               for file in files if file.endswith(('.yml', '.yaml'))]
-# if not yaml_files:
-#     shutil.rmtree(TMP_DIR, ignore_errors=True)
-#     print("tmp/ 目录已删除。")
-#     exit(0)
+if not yaml_files:
+    shutil.rmtree(TMP_DIR, ignore_errors=True)
+    print("tmp/ 目录已删除。")
+    exit(0)
 
-# 存储已处理文件的哈希值
 processed_files_hash = {}
 
 for file_path in yaml_files:
@@ -64,8 +99,7 @@ for file_path in yaml_files:
         exit(0)
 
     file_hash = get_file_hash(file_path)
-    
-    # 如果该文件的hash已经处理过，则删除该文件
+
     if file_hash in processed_files_hash:
         safe_remove(file_path)
         continue
@@ -73,12 +107,11 @@ for file_path in yaml_files:
     if not check_yaml_format(file_path):
         safe_remove(file_path)
     else:
-        # 记录当前文件的hash值
         processed_files_hash[file_hash] = file_path
-        move_file(file_path, os.path.join(POC_DIR, os.path.relpath(file_path, TMP_DIR)))
+        move_file(file_path, POC_DIR)
 
-# if not any(os.scandir(TMP_DIR)):
-#     shutil.rmtree(TMP_DIR, ignore_errors=True)
-#     print("tmp/ 目录已删除。")
+if not any(os.scandir(TMP_DIR)):
+    shutil.rmtree(TMP_DIR, ignore_errors=True)
+    print("tmp/ 目录已删除。")
 
 print("POC 检查完成。")
