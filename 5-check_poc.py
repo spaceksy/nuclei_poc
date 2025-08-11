@@ -50,10 +50,10 @@ if not os.path.exists(TMP_DIR):
 
 yaml_files = [os.path.join(root, file) for root, _, files in os.walk(TMP_DIR)
               for file in files if file.endswith(('.yml', '.yaml'))]
-if not yaml_files:
-    shutil.rmtree(TMP_DIR, ignore_errors=True)
-    print("tmp/ 目录已删除。")
-    exit(0)
+# if not yaml_files:
+#     shutil.rmtree(TMP_DIR, ignore_errors=True)
+#     print("tmp/ 目录已删除。")
+#     exit(0)
 
 # 存储已处理文件的哈希值
 processed_files_hash = {}
@@ -77,8 +77,8 @@ for file_path in yaml_files:
         processed_files_hash[file_hash] = file_path
         move_file(file_path, os.path.join(POC_DIR, os.path.relpath(file_path, TMP_DIR)))
 
-if not any(os.scandir(TMP_DIR)):
-    shutil.rmtree(TMP_DIR, ignore_errors=True)
-    print("tmp/ 目录已删除。")
+# if not any(os.scandir(TMP_DIR)):
+#     shutil.rmtree(TMP_DIR, ignore_errors=True)
+#     print("tmp/ 目录已删除。")
 
 print("POC 检查完成。")
