@@ -37,6 +37,9 @@ jobs:
     - name: 7 Get POC Name
       run: python 7-get_pocname.py
 
+    - name: 9 Get POC EveryVuln
+      run: python 9-get_everyvuln.py
+      
     - name: 8 Delete Nuclei
       run: rm -rf nuclei
       
